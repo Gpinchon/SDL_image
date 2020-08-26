@@ -1,61 +1,137 @@
-cmake_minimum_required(VERSION 3.3.2)
-project(SDL_image C)
+CMAKE_MINIMUM_REQUIRED(VERSION 3.0)
 
-if (ANDROID)
+PROJECT(SDL_image C)
 
-else()
-    find_package(SDL2 REQUIRED)
+#set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/")
+
+#find_package(SDL2 REQUIRED)
+
+if(NOT DEFINED SDL2_LIBRARY)
+	message(ERROR "SDL2_LIBRARY missing")
 endif()
 
-option(SUPPORT_JPG "Support loading JPEG images" ON)
-option(SUPPORT_PNG "Support loading PNG images" ON)
-option(SUPPORT_WEBP "Support loading WEBP images" OFF)
-option(BUILD_SHOWIMAGE "Build the showimage sample program" OFF)
-option(BUILD_SHARED_LIBS "Build the library as a shared library" ON)
-
-add_library(SDL2_image SHARED)
-target_sources(SDL2_image PRIVATE IMG.c IMG_png.c IMG_bmp.c IMG_gif.c
-		IMG_jpg.c IMG_lbm.c IMG_pcx.c IMG_pnm.c IMG_svg.c IMG_tga.c
-		IMG_tif.c IMG_webp.c IMG_WIC.c IMG_xcf.c IMG_xpm.c IMG_xv.c IMG_xxx.c)
-
-target_compile_definitions(SDL2_image PRIVATE
-		-DLOAD_BMP -DLOAD_GIF -DLOAD_LBM -DLOAD_PCX -DLOAD_PNM
-		-DLOAD_TGA -DLOAD_XCF -DLOAD_XPM -DLOAD_XV -DLOAD_XPM)
-
-if (SUPPORT_JPG)
-	target_compile_definitions(SDL2_image PRIVATE -DLOAD_JPG)
-	add_subdirectory(external/jpeg-9c)
-	target_link_libraries(SDL2_image PRIVATE jpeg)
+if(NOT DEFINED SDL2_INCLUDE_DIR)
+	message(ERROR "SDL2_INCLUDE_DIR missing")
 endif()
 
-if (SUPPORT_PNG)
-	# missing libpng.vers
-	set(HAVE_LD_VERSION_SCRIPT OFF CACHE BOOL "" FORCE)
-	target_compile_definitions(SDL2_image PRIVATE -DLOAD_PNG)
+option(SDL2_IMAGE_STATIC "ENABLE STATIC BUILD" ON)
+option(SDL2_IMAGE_SHARED "ENABLE SHARED BUILD" ON)
+option(ENABLE_BMP "ENABLE_BMP" ON)
+option(ENABLE_GIF "ENABLE_GIF" ON)
+option(ENABLE_JPG "ENABLE_JPG" OFF)
+option(ENABLE_LBM "ENABLE_LBM" ON)
+option(ENABLE_PCX "ENABLE_PCX" ON)
+option(ENABLE_PNG "ENABLE_PNG" OFF)
+option(ENABLE_PNM "ENABLE_PNM" ON)
+option(ENABLE_TGA "ENABLE_TGA" ON)
+option(ENABLE_TIF "ENABLE_TIF" OFF)
+option(ENABLE_WEBP "ENABLE_WEBP" OFF) # BROKEN
+option(ENABLE_XCF "ENABLE_XCF" ON)
+option(ENABLE_XPM "ENABLE_XPM" ON)
+option(ENABLE_XV "ENABLE_XV" ON)
 
-	add_subdirectory(external/libpng-1.6.37)
-	include_directories(external/libpng-1.6.37)
-	target_link_libraries(SDL2_image PRIVATE png)
+set(ENABLE_DEFS "")
+set(LINK_LIBS ${SDL2_LIBRARY})
+set(INCLUDE_DIRS ${SDL2_INCLUDE_DIR})
+
+if(ENABLE_BMP)
+    set(ENABLE_DEFS "${ENABLE_DEFS}" LOAD_BMP)
 endif()
 
-if (SUPPORT_WEBP)
-	target_compile_definitions(SDL2_image PRIVATE -DLOAD_WEBP)
-	# missing cpufeatures
-	add_subdirectory(external/libwebp-1.0.3)
-	target_link_libraries(SDL2_image PRIVATE webp)
+if(ENABLE_GIF)
+    set(ENABLE_DEFS "${ENABLE_DEFS}" LOAD_GIF)
 endif()
 
-add_library(SDL2::image ALIAS SDL2_image)
-
-target_include_directories(SDL2_image PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
-
-if (ANDROID)
-    target_link_libraries(SDL2_image PRIVATE SDL2)
-else()
-    target_link_libraries(SDL2_image PRIVATE SDL2::SDL2)
+if(ENABLE_JPG)
+    set(ENABLE_DEFS "${ENABLE_DEFS}" LOAD_JPG)
+    find_package(JPEG REQUIRED)
+    set(LINK_LIBS "${LINK_LIBS}" "${JPEG_LIBRARIES}")
+    set(INCLUDE_DIRS "${INCLUDE_DIRS}" "${JPEG_INCLUDE_DIRS}")
 endif()
 
-if(BUILD_SHOWIMAGE)
-	add_executable(showimage showimage.c)
-	target_link_libraries(showimage PRIVATE SDL2::SDL2 SDL2::image)
+if(ENABLE_LBM)
+    set(ENABLE_DEFS "${ENABLE_DEFS}" LOAD_LBM)
 endif()
+
+if(ENABLE_PCX)
+    set(ENABLE_DEFS "${ENABLE_DEFS}" LOAD_PCX)
+endif()
+
+if(ENABLE_PNG)
+    set(ENABLE_DEFS "${ENABLE_DEFS}" LOAD_PNG)
+    find_package(PNG REQUIRED)
+    set(LINK_LIBS "${LINK_LIBS}" "${PNG_LIBRARIES}")
+    set(INCLUDE_DIRS "${INCLUDE_DIRS}" "${PNG_INCLUDE_DIRS}")
+endif()
+
+if(ENABLE_PNM)
+    set(ENABLE_DEFS "${ENABLE_DEFS}" LOAD_PNM)
+endif()
+
+if(ENABLE_TGA)
+    set(ENABLE_DEFS "${ENABLE_DEFS}" LOAD_TGA)
+endif()
+
+if(ENABLE_TIF)
+    set(ENABLE_DEFS "${ENABLE_DEFS}" LOAD_TIF)
+    find_package(TIFF REQUIRED)
+    set(LINK_LIBS "${LINK_LIBS}" "${TIFF_LIBRARIES}")
+    set(INCLUDE_DIRS "${INCLUDE_DIRS}" "${TIFF_INCLUDE_DIRS}")
+endif()
+
+if(ENABLE_WEBP)
+    set(ENABLE_DEFS "${ENABLE_DEFS}" LOAD_WEBP)
+    find_package(WebP REQUIRED) # BROKEN, debian doesn't install the cmake config files, so find_package will fail
+    set(LINK_LIBS "${LINK_LIBS}" "${WebP_LIBRARIES}")
+    set(INCLUDE_DIRS "${INCLUDE_DIRS}" "${WebP_INCLUDE_DIRS}")
+endif()
+
+if(ENABLE_XCF)
+    set(ENABLE_DEFS "${ENABLE_DEFS}" LOAD_XCF)
+endif()
+
+if(ENABLE_XV)
+    set(ENABLE_DEFS "${ENABLE_DEFS}" LOAD_XV)
+endif()
+
+set(SRC_C_FILES
+    IMG.c
+    IMG_png.c
+    IMG_bmp.c
+    IMG_gif.c
+    IMG_jpg.c
+    IMG_lbm.c
+    IMG_pcx.c
+    IMG_pnm.c
+    IMG_svg.c
+    IMG_tga.c
+    IMG_tif.c
+    IMG_webp.c
+    IMG_WIC.c
+    IMG_xcf.c
+    IMG_xpm.c
+    IMG_xv.c
+    IMG_xxx.c
+)
+
+set(SRC_H_FILES  
+    SDL_image.h
+    miniz.h
+)
+
+set(SRC_FILES ${SRC_C_FILES} ${SRC_H_FILES})
+
+if(SDL2_IMAGE_STATIC)
+add_library(SDL2_image-static STATIC ${SRC_FILES})
+target_link_libraries(SDL2_image-static ${LINK_LIBS})
+target_include_directories(SDL2_image-static PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
+target_compile_definitions(SDL2_image-static PUBLIC "${ENABLE_DEFS}")
+endif()
+if(SDL2_IMAGE_SHARED)
+add_library(SDL2_image SHARED ${SRC_FILES})
+target_link_libraries(SDL2_image ${LINK_LIBS})
+target_include_directories(SDL2_image-static PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
+target_compile_definitions(SDL2_image PUBLIC "${ENABLE_DEFS}")
+endif()
+
+include_directories(${INCLUDE_DIRS})
